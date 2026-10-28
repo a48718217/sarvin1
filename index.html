@@ -1,42 +1,115 @@
-<html>
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
   <head>
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <!-- کتابخانه‌های واقعیت افزوده MindAR و A-Frame -->
-    <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+    <title>Hamideh AR</title>
+    <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
     <style>
-      body { margin: 0; overflow: hidden; }
+      body {
+        margin: 0;
+        overflow: hidden;
+        background: #000;
+        font-family: sans-serif;
+      }
+      /* صفحه شروع برای باز کردن قفل پخش ویدیو در موبایل */
+      #start-screen {
+        position: fixed;
+        top: 0; left: 0; width: 100vw; height: 100vh;
+        background: rgba(0, 0, 0, 0.85);
+        z-index: 9999;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        color: #fff;
+        text-align: center;
+      }
+      #start-btn {
+        padding: 14px 32px;
+        font-size: 18px;
+        background: #fff;
+        color: #000;
+        border: none;
+        border-radius: 30px;
+        cursor: pointer;
+        margin-top: 20px;
+        font-weight: bold;
+      }
+      /* ویدیوی تمام‌صفحه */
+      #fullscreen-video {
+        position: fixed;
+        top: 0; left: 0;
+        width: 100vw; height: 100vh;
+        object-fit: cover;
+        z-index: 5000;
+        display: none;
+        background: #000;
+      }
     </style>
   </head>
   <body>
-    <!-- سیستم واقعیت افزوده که فایل targets.mind تو را می‌خواند -->
-    <a-scene mindar-image="imageTargetSrc: targets.mind; smooth: true;" color-space="sRGB" renderer="colorManagement: true, physicallyCorrectLights" vr-mode-ui="enabled: false" device-orientation-permission-ui="enabled: false">
-      
-      <a-assets>
-        <!-- اینجا لینک ویدیوی خودت را بگذار -->
-        <video id="cat-video" src="https://github.com/a48718217/sarvin1/raw/refs/heads/main/s1.mp4" loop="false" crossorigin="anonymous" playsinline></video>
-      </a-assets>
+
+    <!-- صفحه لمس اولیه برای مجوز پخش ویدیو در موبایل -->
+    <div id="start-screen">
+      <p>دوربین را مقابل پلاک بگیرید</p>
+      <button id="start-btn">شروع اسکن ✨</button>
+    </div>
+
+    <!-- ویدیوی تمام صفحه (مستقیماً فایل s1.mp4 کنار کد را می‌خواند) -->
+    <video id="fullscreen-video" src="./s1.mp4" playsinline webkit-playsinline preload="auto"></video>
+
+    <!-- صحنه واقعیت افزوده با حساسیت بالا برای تشخیص سریع‌تر پلاک -->
+    <a-scene
+      mindar-image="imageTargetSrc: ./targets.mind; warmupTolerance: 1; missTolerance: 5; filterMinCF: 0.0001; filterBeta: 0.001;"
+      color-space="sRGB"
+      renderer="colorManagement: true, physicallyCorrectLights"
+      vr-mode-ui="enabled: false"
+      device-orientation-permission-ui="enabled: false">
 
       <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
-      <!-- به محض پیدا کردن پلاک (targetIndex: 0) ویدیو پخش می‌شود -->
-      <a-entity mindar-image-target="targetIndex: 0">
-        <!-- اندازه ویدیو روی پلاک -->
-        <a-video src="#cat-video" position="0 0 0" height="1" width="1" rotation="0 0 0"></a-video>
-      </a-entity>
-      
+      <!-- پشتیبانی از حداکثر ۵ عکس مختلف از پلاک در فایل targets.mind -->
+      <a-entity mindar-image-target="targetIndex: 0" class="pendant-target"></a-entity>
+      <a-entity mindar-image-target="targetIndex: 1" class="pendant-target"></a-entity>
+      <a-entity mindar-image-target="targetIndex: 2" class="pendant-target"></a-entity>
+      <a-entity mindar-image-target="targetIndex: 3" class="pendant-target"></a-entity>
+      <a-entity mindar-image-target="targetIndex: 4" class="pendant-target"></a-entity>
     </a-scene>
 
     <script>
-      // اسکریپت برای شروع پخش ویدیو به محض اسکن شدن پلاک
-      const videoElement = document.querySelector("#cat-video");
-      const targetEntity = document.querySelector('[mindar-image-target]');
+      const startScreen = document.getElementById('start-screen');
+      const startBtn = document.getElementById('start-btn');
+      const video = document.getElementById('fullscreen-video');
+      const targets = document.querySelectorAll('.pendant-target');
+      let isPlaying = false;
 
-      targetEntity.addEventListener("targetFound", event => {
-        videoElement.play();
+      // باز کردن قفل ویدیو با اولین لمس کاربر
+      startBtn.addEventListener('click', () => {
+        startScreen.style.display = 'none';
+        video.play().then(() => {
+          video.pause();
+          video.currentTime = 0;
+        }).catch(() => {});
       });
-      targetEntity.addEventListener("targetLost", event => {
-        videoElement.pause();
+
+      // به محض تشخیص هر کدام از زوایای پلاک، ویدیو تمام‌صفحه پخش شود
+      targets.forEach(target => {
+        target.addEventListener("targetFound", () => {
+          if (!isPlaying) {
+            isPlaying = true;
+            video.style.display = 'block';
+            video.currentTime = 0;
+            video.play();
+          }
+        });
+      });
+
+      // وقتی ویدیو تمام شد، به حالت دوربین برگردد
+      video.addEventListener('ended', () => {
+        video.style.display = 'none';
+        isPlaying = false;
       });
     </script>
   </body>
