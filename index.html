@@ -1,0 +1,43 @@
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!-- کتابخانه‌های واقعیت افزوده MindAR و A-Frame -->
+    <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
+    <style>
+      body { margin: 0; overflow: hidden; }
+    </style>
+  </head>
+  <body>
+    <!-- سیستم واقعیت افزوده که فایل targets.mind تو را می‌خواند -->
+    <a-scene mindar-image="imageTargetSrc: targets.mind; smooth: true;" color-space="sRGB" renderer="colorManagement: true, physicallyCorrectLights" vr-mode-ui="enabled: false" device-orientation-permission-ui="enabled: false">
+      
+      <a-assets>
+        <!-- اینجا لینک ویدیوی خودت را بگذار -->
+        <video id="cat-video" src="لینک_مستقیم_ویدیوی_تو.mp4" loop="false" crossorigin="anonymous" playsinline></video>
+      </a-assets>
+
+      <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+
+      <!-- به محض پیدا کردن پلاک (targetIndex: 0) ویدیو پخش می‌شود -->
+      <a-entity mindar-image-target="targetIndex: 0">
+        <!-- اندازه ویدیو روی پلاک -->
+        <a-video src="#cat-video" position="0 0 0" height="1" width="1" rotation="0 0 0"></a-video>
+      </a-entity>
+      
+    </a-scene>
+
+    <script>
+      // اسکریپت برای شروع پخش ویدیو به محض اسکن شدن پلاک
+      const videoElement = document.querySelector("#cat-video");
+      const targetEntity = document.querySelector('[mindar-image-target]');
+
+      targetEntity.addEventListener("targetFound", event => {
+        videoElement.play();
+      });
+      targetEntity.addEventListener("targetLost", event => {
+        videoElement.pause();
+      });
+    </script>
+  </body>
+</html>
