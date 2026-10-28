@@ -11,13 +11,12 @@
         margin: 0;
         overflow: hidden;
         background: #000;
-        font-family: sans-serif;
+        font-family: Tahoma, sans-serif;
       }
-      /* صفحه شروع برای باز کردن قفل پخش ویدیو در موبایل */
       #start-screen {
         position: fixed;
         top: 0; left: 0; width: 100vw; height: 100vh;
-        background: rgba(0, 0, 0, 0.85);
+        background: rgba(0, 0, 0, 0.9);
         z-index: 9999;
         display: flex;
         flex-direction: column;
@@ -27,42 +26,62 @@
         text-align: center;
       }
       #start-btn {
-        padding: 14px 32px;
+        padding: 14px 35px;
         font-size: 18px;
-        background: #fff;
-        color: #000;
+        background: #2ecc71;
+        color: #fff;
         border: none;
         border-radius: 30px;
         cursor: pointer;
         margin-top: 20px;
         font-weight: bold;
       }
-      /* ویدیوی تمام‌صفحه */
+      #status-bar {
+        position: fixed;
+        top: 15px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(0, 0, 0, 0.75);
+        color: #fff;
+        padding: 8px 18px;
+        border-radius: 20px;
+        font-size: 14px;
+        z-index: 8000;
+        pointer-events: none;
+        white-space: nowrap;
+      }
+      /* استفاده از opacity به جای display:none برای حل باگ لود نشدن ویدیو در موبایل */
       #fullscreen-video {
         position: fixed;
         top: 0; left: 0;
         width: 100vw; height: 100vh;
         object-fit: cover;
         z-index: 5000;
-        display: none;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.3s ease;
         background: #000;
+      }
+      #fullscreen-video.active {
+        opacity: 1;
+        pointer-events: auto;
       }
     </style>
   </head>
   <body>
 
-    <!-- صفحه لمس اولیه برای مجوز پخش ویدیو در موبایل -->
+    <div id="status-bar">منتظر شروع...</div>
+
     <div id="start-screen">
       <p>دوربین را مقابل پلاک بگیرید</p>
       <button id="start-btn">شروع اسکن ✨</button>
     </div>
 
-    <!-- ویدیوی تمام صفحه (مستقیماً فایل s1.mp4 کنار کد را می‌خواند) -->
-    <video id="fullscreen-video" src="./s1.mp4" playsinline webkit-playsinline preload="auto"></video>
+    <!-- خواندن مستقیم فایل s1.mp4 از کنار کد در کلودفلر -->
+    <video id="fullscreen-video" src="./s1.mp4" playsinline webkit-playsinline preload="auto" muted></video>
 
-    <!-- صحنه واقعیت افزوده با حساسیت بالا برای تشخیص سریع‌تر پلاک -->
     <a-scene
-      mindar-image="imageTargetSrc: ./targets.mind; warmupTolerance: 1; missTolerance: 5; filterMinCF: 0.0001; filterBeta: 0.001;"
+      mindar-image="imageTargetSrc: ./targets.mind; warmupTolerance: 1; missTolerance: 5;"
       color-space="sRGB"
       renderer="colorManagement: true, physicallyCorrectLights"
       vr-mode-ui="enabled: false"
@@ -70,46 +89,55 @@
 
       <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
-      <!-- پشتیبانی از حداکثر ۵ عکس مختلف از پلاک در فایل targets.mind -->
       <a-entity mindar-image-target="targetIndex: 0" class="pendant-target"></a-entity>
       <a-entity mindar-image-target="targetIndex: 1" class="pendant-target"></a-entity>
       <a-entity mindar-image-target="targetIndex: 2" class="pendant-target"></a-entity>
-      <a-entity mindar-image-target="targetIndex: 3" class="pendant-target"></a-entity>
-      <a-entity mindar-image-target="targetIndex: 4" class="pendant-target"></a-entity>
     </a-scene>
 
     <script>
       const startScreen = document.getElementById('start-screen');
       const startBtn = document.getElementById('start-btn');
+      const statusBar = document.getElementById('status-bar');
       const video = document.getElementById('fullscreen-video');
       const targets = document.querySelectorAll('.pendant-target');
       let isPlaying = false;
 
-      // باز کردن قفل ویدیو با اولین لمس کاربر
       startBtn.addEventListener('click', () => {
         startScreen.style.display = 'none';
+        statusBar.innerText = 'در حال جستجوی پلاک... 🔍';
+        
+        // باز کردن قفل ویدیو در مرورگر موبایل با اولین لمس
+        video.muted = true;
         video.play().then(() => {
           video.pause();
           video.currentTime = 0;
-        }).catch(() => {});
+        }).catch(err => {
+          console.log('Video unlock:', err);
+        });
       });
 
-      // به محض تشخیص هر کدام از زوایای پلاک، ویدیو تمام‌صفحه پخش شود
       targets.forEach(target => {
-        target.addEventListener("targetFound", () => {
+target.addEventListener("targetFound", () => {
+          statusBar.innerText = 'پلاک شناسایی شد! در حال پخش... 🎉';
           if (!isPlaying) {
             isPlaying = true;
-            video.style.display = 'block';
+            video.classList.add('active');
             video.currentTime = 0;
-            video.play();
+            video.muted = false;
+            
+            // اگر مرورگر به خاطر صدا مانع پخش شد، خودکار بی‌صدا پخش کن تا صفحه سیاه نماند
+            video.play().catch(() => {
+              video.muted = true;
+              video.play();
+            });
           }
         });
       });
 
-      // وقتی ویدیو تمام شد، به حالت دوربین برگردد
       video.addEventListener('ended', () => {
-        video.style.display = 'none';
+        video.classList.remove('active');
         isPlaying = false;
+        statusBar.innerText = 'در حال جستجوی پلاک... 🔍';
       });
     </script>
   </body>
